@@ -15,7 +15,9 @@ const HeroLanding = () => {
       {/* ... Background and Doodle code same as before ... */}
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center transition-transform duration-1000 scale-105"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=2000&auto=format&fit=crop')" }}
+        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1601654253194-260e0b6984f9?q=80&w=1399&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}
+        // style={{ backgroundImage: "url('https://plus.unsplash.com/premium_photo-1663013222785-f653d121e06b?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}
+
       >
         <div className="absolute inset-0 bg-black/10" /> 
       </div>
@@ -32,8 +34,11 @@ const HeroLanding = () => {
         </div>
 
         <h1 className="text-4xl md:text-6xl font-serif text-white leading-tight mb-6">
-          Your Body Knows the Way.<br />
-          <span className="italic">Let's Listen.</span>
+          Discover Your Ayurvedic Mind-Body Type.
+          <br />
+          <span className="text-2xl md:text-4xl italic">
+            Uncover your unique blueprint—Vata, Pitta, or Kapha—for a balanced life.
+          </span>
         </h1>
 
         <button 
@@ -41,7 +46,7 @@ const HeroLanding = () => {
           className="group relative px-8 py-4 bg-white text-[#2F3E46] font-medium rounded-full transition-all hover:bg-[#84A98C] hover:text-white shadow-lg"
         >
           <span className="relative z-10 flex items-center gap-2">
-            Discover Your Prakarti 🌿
+            Start the Assessment
           </span>
         </button>
       </motion.div>

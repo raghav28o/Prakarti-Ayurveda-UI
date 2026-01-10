@@ -1,35 +1,71 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { isAuthenticated } from '../utils/auth';
+import { ENDPOINTS } from '../apiConfig';
 
 const Assessment = ({ questions }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userResponses, setUserResponses] = useState([]);
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleAnswer = (option) => {
-  // 1. Create the new response object
-  const newResponse = {
-    questionCode: questions[currentIndex].questionCode,
-    answerValue: option.answerValue,
-    doshaType: option.doshaType,
-    weight: option.weight
+  const submitAssessment = async (responses) => {
+    setIsLoading(true);
+    setError(null);
+
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user'));
+
+    try {
+      const response = await fetch(ENDPOINTS.RUN_ASSESSMENT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          responses: responses
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit assessment');
+      }
+
+      const result = await response.json();
+      navigate('/result', { state: { plan: result } });
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // 2. Create the full updated list of responses
-  const updatedResponses = [...userResponses, newResponse];
-  setUserResponses(updatedResponses);
+  const handleAnswer = (option) => {
+    const newResponse = {
+      questionCode: questions[currentIndex].questionCode,
+      answerValue: option.answerValue,
+      doshaType: option.doshaType,
+      weight: option.weight
+    };
 
-  // 3. Decide where to go
-  if (currentIndex < questions.length - 1) {
-    // Still have more questions
-    setCurrentIndex(currentIndex + 1);
-  } else {
-    // Finished all questions - Go to Auth Page as we planned
-    // We pass the final data through 'state'
-    navigate('/auth', { state: { responses: updatedResponses } });
-  }
-};
+    const updatedResponses = [...userResponses, newResponse];
+    setUserResponses(updatedResponses);
+
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      if (isAuthenticated()) {
+        submitAssessment(updatedResponses);
+      } else {
+        navigate('/auth', { state: { responses: updatedResponses } });
+      }
+    }
+  };
 
   const currentQuestion = questions[currentIndex];
   const progress = ((currentIndex + 1) / questions.length) * 100;

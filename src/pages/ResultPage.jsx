@@ -1,25 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ENDPOINTS } from '../apiConfig';
+import { isAuthenticated, logout } from '../utils/auth';
 
 const ResultPage = () => {
   const location = useLocation();
-  const [plan, setPlan] = useState(location.state?.plan);
+  const navigate = useNavigate();
+  const [plan, setPlan] = useState(null);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [userDetails, setUserDetails] = useState({
-    age: plan?.assessment?.user?.age || '',
-    gender: plan?.assessment?.user?.gender || 'Male',
-    location: plan?.assessment?.user?.location || '',
-    foodPreference: plan?.assessment?.user?.foodPreference || 'VEG'
+    age: '',
+    gender: 'Male',
+    location: '',
+    foodPreference: 'VEG'
   });
   const [errors, setErrors] = useState({});
 
-  if (!plan) return <div className="p-10 text-center">No plan found. Please take the quiz again.</div>;
+  useEffect(() => {
+    const initialPlan = location.state?.plan;
+    if (initialPlan) {
+      localStorage.setItem('lastPlan', JSON.stringify(initialPlan));
+      setPlan(initialPlan);
+    } else {
+      const storedPlan = localStorage.getItem('lastPlan');
+      if (storedPlan) {
+        setPlan(JSON.parse(storedPlan));
+      }
+    }
+  }, [location.state?.plan]);
 
-  const { assessment, dietPlan } = plan;
-  const { breakfast, lunch, dinner, avoidFoods, doshaType } = dietPlan;
+  useEffect(() => {
+    if (plan) {
+      setUserDetails({
+        age: plan.assessment?.user?.age || '',
+        gender: plan.assessment?.user?.gender || 'Male',
+        location: plan.assessment?.user?.location || '',
+        foodPreference: plan.assessment?.user?.foodPreference || 'VEG'
+      });
+    }
+  }, [plan]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -40,22 +61,22 @@ const ResultPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const [notification, setNotification] = useState({ message: '', type: '' });
+
   const handleRegeneratePlan = async () => {
-    // Validate form
     if (!validateForm()) {
       return;
     }
 
     setIsRegenerating(true);
+    setNotification({ message: '', type: '' });
 
     try {
       const token = localStorage.getItem('token');
-      const userId = assessment.user.id;
-      const assessmentId = assessment.id;
+      const userId = plan.assessment.user.id;
+      const assessmentId = plan.assessment.id;
 
-      // Step 1: Update user details
-      console.log('📝 Updating user details...');
-      const updateResponse = await fetch(`${ENDPOINTS.BASE_URL}/api/users/${userId}`, {
+      await fetch(`${ENDPOINTS.BASE_URL}/api/users/${userId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -64,14 +85,6 @@ const ResultPage = () => {
         body: JSON.stringify(userDetails)
       });
 
-      if (!updateResponse.ok) {
-        throw new Error('Failed to update user details');
-      }
-
-      console.log('✅ User details updated');
-
-      // Step 2: Regenerate diet plan
-      console.log('🔄 Regenerating diet plan...');
       const regenerateResponse = await fetch(`${ENDPOINTS.BASE_URL}/api/assessments/${assessmentId}/regenerate-diet-plan`, {
         method: 'PUT',
         headers: {
@@ -81,39 +94,56 @@ const ResultPage = () => {
       });
 
       if (!regenerateResponse.ok) {
-        const errorText = await regenerateResponse.text();
-        console.error('Backend error:', errorText);
         throw new Error(`Failed to regenerate diet plan: ${regenerateResponse.status}`);
       }
 
       const newPlan = await regenerateResponse.json();
-      console.log('✅ New diet plan generated:', newPlan);
-
+      localStorage.setItem('lastPlan', JSON.stringify(newPlan));
       setPlan(newPlan);
       setShowRegenerateModal(false);
-      alert('🎉 Your personalized diet plan has been regenerated!');
+      setNotification({ message: '🎉 Your personalized diet plan has been regenerated!', type: 'success' });
 
     } catch (error) {
       console.error('❌ Error regenerating plan:', error);
-
-      // Show user-friendly error
-      let errorMessage = 'Failed to regenerate plan. ';
-      if (error.message.includes('500')) {
-        errorMessage += 'The server encountered an error. Please try again or contact support.';
-      } else if (error.message.includes('401') || error.message.includes('403')) {
-        errorMessage += 'Your session may have expired. Please login again.';
-      } else {
-        errorMessage += error.message || 'Please try again.';
-      }
-
-      alert(errorMessage);
+      setNotification({ message: 'Failed to regenerate plan. Please try again.', type: 'error' });
     } finally {
       setIsRegenerating(false);
     }
   };
 
+  if (!plan) {
+    return <div className="p-10 text-center">No plan found. Please take the quiz again.</div>;
+  }
+
+  const { assessment, dietPlan } = plan;
+  const { breakfast, lunch, dinner, avoidFoods, doshaType } = dietPlan;
+
   return (
-    <div className="min-h-screen bg-[#f8f9f8] p-6 md:p-12">
+    <div className="min-h-screen bg-[#f8f9f8] p-6 md:p-12 relative">
+      {notification.message && (
+        <div className={`fixed top-5 right-5 p-4 rounded-md shadow-lg text-white ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+          {notification.message}
+          <button onClick={() => setNotification({ message: '', type: '' })} className="ml-4 font-bold">X</button>
+        </div>
+      )}
+      <div className="absolute top-6 right-6 flex space-x-2">
+        {isAuthenticated() ? (
+          <button
+            onClick={logout}
+            className="flex items-center space-x-2 px-4 py-2 text-gray-700 rounded-md border border-gray-300 hover:bg-gray-100 transition-colors"
+          >
+            <span role="img" aria-label="logout">🚪</span>
+            <span>Logout</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate('/auth')}
+            className="px-4 py-2 text-gray-700 rounded-md border border-gray-300 hover:bg-gray-100 transition-colors"
+          >
+            Login
+          </button>
+        )}
+      </div>
       <div className="max-w-4xl mx-auto">
         {/* Header Section */}
         <header className="text-center mb-12">
