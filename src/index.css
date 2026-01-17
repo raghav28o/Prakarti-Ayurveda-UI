@@ -3,7 +3,15 @@
 @tailwind utilities;
 
 body {
-  @apply bg-sage-100 text-clay-900 font-sans;
+  /* @apply bg-sage-100 text-clay-900; */
   margin: 0;
   min-height: 100vh;
+
+/* .roboto-<uniquifier> { */
+  font-family: "Roboto", sans-serif !important;
+  font-optical-sizing: auto;
+  font-weight: normal;
+  font-style: normal;
+  font-variation-settings:
+    "wdth" 100;
 }

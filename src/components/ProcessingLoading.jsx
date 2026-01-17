@@ -10,11 +10,8 @@ const ProcessingLoading = () => {
   const hasRunRef = useRef(false);
 
   useEffect(() => {
-    // Prevent multiple API calls using ref (survives strict mode)
-    if (hasRunRef.current) {
-      console.log('⚠️ Duplicate call prevented');
-      return;
-    }
+    // Prevent running the API call twice in React StrictMode
+    if (hasRunRef.current) return;
     hasRunRef.current = true;
 
     const runAssessment = async () => {
@@ -24,8 +21,38 @@ const ProcessingLoading = () => {
         // 1. Get the answers we stored during the quiz
         const answers = location.state?.responses || [];
 
-        // 2. Get the JWT token from localStorage
+        // 2. Get the JWT token and user from localStorage
         const token = localStorage.getItem('token');
+        const userRaw = localStorage.getItem('user');
+
+        console.log('📦 Token:', token ? 'Present' : 'Missing');
+        console.log('📦 User Raw:', userRaw);
+
+        if (!token || !userRaw) {
+          setError('Authentication data missing. Please log in again.');
+          return;
+        }
+
+        let user;
+        try {
+          // Parse user from localStorage
+          user = typeof userRaw === 'string' ? JSON.parse(userRaw) : userRaw;
+          console.log('✅ Parsed user:', user);
+        } catch (parseError) {
+          console.error('❌ Failed to parse user:', parseError, 'Raw value:', userRaw);
+          setError(`Invalid user data format. Please log in again. (${parseError.message})`);
+          return;
+        }
+
+        // If no user ID, use email as fallback
+        const userId = user?.id || user?.email || 'unknown';
+        if (!userId || userId === 'unknown') {
+          console.error('❌ Cannot determine user ID:', user);
+          setError('User identification failed. Please log in again.');
+          return;
+        }
+
+        console.log('👤 Using userId:', userId);
 
         // 3. Call your Spring Boot API with timeout
         console.log('📤 Calling:', ENDPOINTS.RUN_ASSESSMENT, 'with', answers.length, 'responses');
@@ -69,7 +96,7 @@ const ProcessingLoading = () => {
           setError("Request timed out. The backend is taking too long to respond.");
         } else {
           console.error('❌ Connection error:', err);
-          setError(`Connection error: ${err.message}. Check if your backend is running.`);
+setError(`Connection error: ${err.message}. Check if your backend is running.`);
         }
       }
     };
