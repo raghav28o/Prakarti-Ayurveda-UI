@@ -6,4 +6,5 @@ export const ENDPOINTS = {
   REGISTER: `${BASE_URL}/auth/register`,
   LOGIN: `${BASE_URL}/auth/login`,
   RUN_ASSESSMENT: `${BASE_URL}/api/assessment/run`,
+  RUN_WEEKLY_ASSESSMENT: `${BASE_URL}/api/assessment/runWeeklyAssessment`,
 };

@@ -3,6 +3,28 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ENDPOINTS } from '../apiConfig';
 import { isAuthenticated, logout } from '../utils/auth';
+import { Leaf, Wind, Flame, Sprout, Soup, Salad, Wheat, AlertTriangle, Settings, User, MapPin, Star, X } from 'lucide-react';
+
+const doshaColors = {
+  VATA: {
+    bg: 'bg-blue-100',
+    text: 'text-blue-800',
+    border: 'border-blue-300',
+    icon: Wind,
+  },
+  PITTA: {
+    bg: 'bg-orange-100',
+    text: 'text-orange-800',
+    border: 'border-orange-300',
+    icon: Flame,
+  },
+  KAPHA: {
+    bg: 'bg-green-100',
+    text: 'text-green-800',
+    border: 'border-green-300',
+    icon: Sprout,
+  },
+};
 
 const ResultPage = () => {
   const location = useLocation();
@@ -44,33 +66,15 @@ const ResultPage = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    // Age validation
-    if (!userDetails.age) {
-      newErrors.age = 'Age is required';
-    } else if (userDetails.age < 1 || userDetails.age > 100) {
-      newErrors.age = 'Age must be between 1 and 100';
-    }
-
-    // Location validation
-    if (!userDetails.location || userDetails.location.trim() === '') {
-      newErrors.location = 'Location is required';
-    }
-
+    if (!userDetails.age || userDetails.age < 1 || userDetails.age > 100) newErrors.age = 'A valid age is required';
+    if (!userDetails.location || userDetails.location.trim() === '') newErrors.location = 'Location is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const [notification, setNotification] = useState({ message: '', type: '' });
-
   const handleRegeneratePlan = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setIsRegenerating(true);
-    setNotification({ message: '', type: '' });
-
     try {
       const token = localStorage.getItem('token');
       const userId = plan.assessment.user.id;
@@ -78,231 +82,166 @@ const ResultPage = () => {
 
       await fetch(`${ENDPOINTS.BASE_URL}/api/users/${userId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(userDetails)
       });
 
       const regenerateResponse = await fetch(`${ENDPOINTS.BASE_URL}/api/assessments/${assessmentId}/regenerate-diet-plan`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
       });
 
-      if (!regenerateResponse.ok) {
-        throw new Error(`Failed to regenerate diet plan: ${regenerateResponse.status}`);
-      }
-
+      if (!regenerateResponse.ok) throw new Error(`Failed to regenerate diet plan: ${regenerateResponse.status}`);
+      
       const newPlan = await regenerateResponse.json();
       localStorage.setItem('lastPlan', JSON.stringify(newPlan));
-      setPlan(newPlan);
-      setShowRegenerateModal(false);
-      setNotification({ message: '🎉 Your personalized diet plan has been regenerated!', type: 'success' });
+      navigate('/dashboard', { state: { plan: newPlan } });
 
     } catch (error) {
       console.error('❌ Error regenerating plan:', error);
-      setNotification({ message: 'Failed to regenerate plan. Please try again.', type: 'error' });
+      setErrors({ form: 'Failed to regenerate plan. Please try again.' });
     } finally {
       setIsRegenerating(false);
     }
   };
 
   if (!plan) {
-    return <div className="p-10 text-center">No plan found. Please take the quiz again.</div>;
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <p className="text-gray-500">Loading your personalized plan...</p>
+      </div>
+    );
   }
 
   const { assessment, dietPlan } = plan;
   const { breakfast, lunch, dinner, avoidFoods, doshaType } = dietPlan;
+  const currentDoshaStyle = doshaColors[doshaType] || doshaColors.VATA;
+  const Icon = currentDoshaStyle.icon;
 
   return (
-    <div className="min-h-screen bg-[#f8f9f8] p-6 md:p-12 relative">
-      {notification.message && (
-        <div className={`fixed top-5 right-5 p-4 rounded-md shadow-lg text-white ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-          {notification.message}
-          <button onClick={() => setNotification({ message: '', type: '' })} className="ml-4 font-bold">X</button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50 text-gray-800">
+      <header className="p-4 flex justify-between items-center max-w-5xl mx-auto">
+        <div className="flex items-center gap-2">
+          <Leaf className="text-green-600" size={24} />
+          <span className="font-serif text-xl font-semibold">Prakarti AyurVeda</span>
         </div>
-      )}
-      <div className="absolute top-6 right-6 flex space-x-2">
-        {isAuthenticated() ? (
+        {isAuthenticated() && (
           <button
             onClick={logout}
-            className="flex items-center space-x-2 px-4 py-2 text-gray-700 rounded-md border border-gray-300 hover:bg-gray-100 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-green-700 transition-colors"
           >
-            <span role="img" aria-label="logout">🚪</span>
-            <span>Logout</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => navigate('/auth')}
-            className="px-4 py-2 text-gray-700 rounded-md border border-gray-300 hover:bg-gray-100 transition-colors"
-          >
-            Login
+            Logout
           </button>
         )}
-      </div>
-      <div className="max-w-4xl mx-auto">
-        {/* Header Section */}
-        <header className="text-center mb-12">
-          <span className="text-[#84A98C] font-bold uppercase tracking-widest">Your Result</span>
-          <h1 className="text-5xl font-serif text-[#2F3E46] mt-2">
-            You are predominantly <span className="italic underline">{doshaType}</span>
-          </h1>
-        </header>
+      </header>
 
-        {/* 1. Score Section */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
-          {[
-            { label: 'Vata', score: assessment.vataScore, color: 'bg-blue-100' },
-            { label: 'Pitta', score: assessment.pittaScore, color: 'bg-orange-100' },
-            { label: 'Kapha', score: assessment.kaphaScore, color: 'bg-green-100' }
-          ].map((item) => (
-            <div key={item.label} className={`${item.color} p-4 rounded-2xl text-center shadow-sm`}>
-              <p className="text-xs uppercase font-bold opacity-60">{item.label}</p>
-              <p className="text-2xl font-bold">{item.score}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* 2. Diet Plan Cards */}
-        <div className="space-y-6">
-          <h3 className="text-2xl font-serif text-[#2F3E46] border-b pb-2">Your Daily Ritual</h3>
-          
-          <div className="grid md:grid-cols-3 gap-6">
-            <PlanCard title="Breakfast" content={breakfast} icon="🥣" />
-            <PlanCard title="Lunch" content={lunch} icon="🥗" />
-            <PlanCard title="Dinner" content={dinner} icon="🍲" />
-          </div>
-
-          {/* 3. Avoid Section */}
-          <div className="mt-8 p-6 bg-red-50 rounded-[32px] border border-red-100">
-            <h4 className="text-red-800 font-bold flex items-center gap-2">
-              ⚠️ Foods to Minimize
-            </h4>
-            <p className="text-red-700 mt-2">{avoidFoods}</p>
-          </div>
-
-          {/* 4. Regenerate Button */}
-          <div className="mt-12 text-center">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowRegenerateModal(true)}
-              className="px-8 py-4 bg-[#84A98C] text-white rounded-full font-bold shadow-lg hover:bg-[#6d8a75] transition-all"
+      <main className="max-w-5xl mx-auto p-4 md:p-8">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
+          <div className="text-center mb-12">
+            <motion.div
+              initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.2 }}
+              className={`w-24 h-24 ${currentDoshaStyle.bg} rounded-full flex items-center justify-center mx-auto mb-6`}
             >
-              ✨ Regenerate AI Powered Diet Plan
-            </motion.button>
-            <p className="text-sm text-gray-500 mt-2 italic">Get a personalized plan based on your preferences</p>
+              <Icon size={48} className={currentDoshaStyle.text} />
+            </motion.div>
+            <h1 className="text-4xl md:text-5xl font-serif text-gray-900 leading-tight">
+              You are Predominantly <span className={currentDoshaStyle.text}>{doshaType}</span>
+            </h1>
+            <p className="text-lg text-gray-600 mt-2">Here is your initial assessment and diet outline.</p>
           </div>
-        </div>
-      </div>
 
-      {/* Regenerate Modal */}
+          <div className="bg-white/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-gray-200/80 mb-8">
+            <h3 className="text-lg font-semibold mb-4 text-center">Your Dosha Scores</h3>
+            <div className="flex justify-around items-end">
+              {Object.entries({ VATA: assessment.vataScore, PITTA: assessment.pittaScore, KAPHA: assessment.kaphaScore }).map(([key, value]) => {
+                const style = doshaColors[key];
+                const isDominant = key === doshaType;
+                return (
+                  <div key={key} className="text-center w-24">
+                    <motion.div
+                      initial={{ height: 0 }} animate={{ height: `${(value / 50) * 100}%` }} transition={{ duration: 1, delay: 0.5 }}
+                      className={`mx-auto w-12 rounded-t-lg ${style.text.replace('text-', 'bg-')} ${isDominant ? 'opacity-100' : 'opacity-40'}`}
+                    />
+                    <p className={`mt-2 font-bold ${style.text}`}>{value}</p>
+                    <p className={`text-sm font-semibold ${style.text}`}>{key}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-6 mb-8 text-center">
+            <MealCard icon={Wheat} title="Breakfast" description={breakfast} />
+            <MealCard icon={Salad} title="Lunch" description={lunch} />
+            <MealCard icon={Soup} title="Dinner" description={dinner} />
+          </div>
+
+          <div className="bg-red-50 p-6 rounded-2xl border border-red-200 mb-12">
+            <h3 className="font-bold text-red-800 flex items-center gap-2 mb-2"><AlertTriangle size={20} /> Foods to Minimize</h3>
+            <p className="text-sm text-red-700 leading-relaxed">{avoidFoods}</p>
+          </div>
+
+          <div className="text-center">
+             <motion.button
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                onClick={() => setShowRegenerateModal(true)}
+                className="px-8 py-4 bg-green-600 text-white rounded-full font-bold shadow-lg hover:bg-green-700 transition-all text-lg"
+              >
+                <div className='flex justify-center items-center gap-x-2'>
+                <Settings /> Personalize Your Weekly Plan
+                </div>
+            </motion.button>
+            <p className="text-sm text-gray-500 mt-3 italic">Refine your diet plan with personal details for a full week's schedule.</p>
+          </div>
+        </motion.div>
+      </main>
+
       <AnimatePresence>
         {showRegenerateModal && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
             onClick={() => !isRegenerating && setShowRegenerateModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 50 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[32px] p-8 max-w-md w-full shadow-2xl"
+              className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl relative"
             >
-              <h3 className="text-2xl font-serif text-[#2F3E46] mb-6">
-                Personalize Your Plan
-              </h3>
+              <button onClick={() => setShowRegenerateModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <X />
+              </button>
+              <h3 className="text-2xl font-serif text-gray-800 mb-2">Personalize Your Plan</h3>
+              <p className="text-gray-600 mb-6">Provide these details to create a diet plan tailored to you.</p>
 
-              <div className="space-y-4">
-                {/* Age */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Age *</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={userDetails.age}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value);
-                      setUserDetails({...userDetails, age: value});
-                      setErrors({...errors, age: ''});
-                    }}
-                    className={`w-full p-3 rounded-xl border ${errors.age ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[#84A98C] outline-none`}
-                    placeholder="25"
-                  />
-                  {errors.age && <p className="text-red-500 text-xs mt-1">{errors.age}</p>}
-                </div>
-
-                {/* Gender */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
-                  <select
-                    value={userDetails.gender}
-                    onChange={(e) => setUserDetails({...userDetails, gender: e.target.value})}
-                    className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#84A98C] outline-none"
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Transgender">Transgender</option>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormInput icon={User} label="Age" error={errors.age}>
+                  <input type="number" min="1" max="100" value={userDetails.age} onChange={(e) => setUserDetails({...userDetails, age: parseInt(e.target.value)})} className="w-full bg-transparent outline-none" placeholder="e.g. 25" />
+                </FormInput>
+                <FormInput icon={User} label="Gender">
+                  <select value={userDetails.gender} onChange={(e) => setUserDetails({...userDetails, gender: e.target.value})} className="w-full bg-transparent outline-none appearance-none">
+                    <option>Male</option><option>Female</option><option>Transgender</option>
                   </select>
-                </div>
-
-                {/* Location */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
-                  <input
-                    type="text"
-                    value={userDetails.location}
-                    onChange={(e) => {
-                      setUserDetails({...userDetails, location: e.target.value});
-                      setErrors({...errors, location: ''});
-                    }}
-                    className={`w-full p-3 rounded-xl border ${errors.location ? 'border-red-500' : 'border-gray-300'} focus:ring-2 focus:ring-[#84A98C] outline-none`}
-                    placeholder="Gurugram, Haryana"
-                  />
-                  {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location}</p>}
-                </div>
-
-                {/* Food Preference */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Food Preference *</label>
-                  <select
-                    value={userDetails.foodPreference}
-                    onChange={(e) => setUserDetails({...userDetails, foodPreference: e.target.value})}
-                    className="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#84A98C] outline-none"
-                  >
-                    <option value="VEG">Vegetarian</option>
-                    <option value="NON_VEG">Non-Vegetarian</option>
-                    <option value="EGGETARIAN">Eggetarian</option>
-                    <option value="VEGAN">Vegan</option>
-                    <option value="JAIN">Jain</option>
+                </FormInput>
+                <FormInput icon={MapPin} label="Location" error={errors.location}>
+                  <input type="text" value={userDetails.location} onChange={(e) => setUserDetails({...userDetails, location: e.target.value})} className="w-full bg-transparent outline-none" placeholder="e.g. Gurugram, Haryana" />
+                </FormInput>
+                <FormInput icon={Star} label="Food Preference">
+                  <select value={userDetails.foodPreference} onChange={(e) => setUserDetails({...userDetails, foodPreference: e.target.value})} className="w-full bg-transparent outline-none appearance-none">
+                    <option value="VEG">Vegetarian</option><option value="NON_VEG">Non-Vegetarian</option><option value="EGGETARIAN">Eggetarian</option><option value="VEGAN">Vegan</option><option value="JAIN">Jain</option>
                   </select>
-                </div>
+                </FormInput>
               </div>
 
-              {/* Buttons */}
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowRegenerateModal(false)}
-                  disabled={isRegenerating}
-                  className="flex-1 py-3 border border-gray-300 rounded-full font-medium hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
+              {errors.form && <p className="text-red-500 text-sm mt-4 text-center">{errors.form}</p>}
+              
+              <div className="mt-8">
                 <button
                   onClick={handleRegeneratePlan}
                   disabled={isRegenerating}
-                  className="flex-1 py-3 bg-[#84A98C] text-white rounded-full font-bold hover:bg-[#6d8a75] disabled:opacity-50"
+                  className="w-full py-4 bg-green-600 text-white rounded-full font-bold hover:bg-green-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
-                  {isRegenerating ? '🔄 Regenerating...' : '✨ Regenerate'}
+                  {isRegenerating ? '🔄 Regenerating...' : '✨ Create My Weekly Plan'}
                 </button>
               </div>
             </motion.div>
@@ -313,13 +252,25 @@ const ResultPage = () => {
   );
 };
 
-// Simple reusable card component
-const PlanCard = ({ title, content, icon }) => (
-  <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-    <div className="text-3xl mb-3">{icon}</div>
-    <h4 className="font-bold text-[#2F3E46] mb-2">{title}</h4>
-    <p className="text-sm leading-relaxed text-gray-600">{content}</p>
-  </div>
+const MealCard = ({ icon: Icon, title, description }) => (
+    <motion.div whileHover={{ scale: 1.05 }} className="bg-white/60 p-6 rounded-2xl shadow-sm border border-gray-200/60 text-center">
+        <div className="bg-green-100 text-green-700 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Icon size={24} />
+        </div>
+        <h4 className="font-bold text-lg text-gray-800 mb-1">{title}</h4>
+        <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
+    </motion.div>
+);
+
+const FormInput = ({ icon: Icon, label, error, children }) => (
+    <div>
+        <label className="block text-sm font-medium text-gray-500 mb-1">{label}</label>
+        <div className={`flex items-center gap-3 p-3 rounded-lg border ${error ? 'border-red-400' : 'border-gray-200'} bg-gray-50/50 focus-within:border-green-500 focus-within:ring-1 focus-within:ring-green-500`}>
+            <Icon size={18} className={error ? 'text-red-500' : 'text-gray-400'} />
+            {children}
+        </div>
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
 );
 
 export default ResultPage;

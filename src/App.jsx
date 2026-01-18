@@ -8,6 +8,7 @@ import AuthPage from './components/AuthPage';
 import ProcessingLoading from './components/ProcessingLoading';
 import NotFound from './pages/NotFound';
 import ResultPage from './pages/ResultPage';
+import Dashboard from './pages/Dashboard';
 
 const App = () => {
   return (
@@ -21,6 +22,7 @@ const App = () => {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/processing" element={<ProcessingLoading />} />
           <Route path="/result" element={<ResultPage />} />
+          <Route path="/dashboard" element={<Dashboard />} />
 
           {/* Catch-all route for 404 Not Found - must be last */}
           <Route path="*" element={<NotFound />} />

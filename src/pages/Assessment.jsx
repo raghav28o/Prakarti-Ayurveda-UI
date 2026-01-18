@@ -6,12 +6,13 @@ import {
   ArrowLeft,
   Sparkles,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth';
 import { ENDPOINTS } from '../apiConfig';
 
 const Assessment = ({ questions }) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userResponses, setUserResponses] = useState([]);
@@ -25,30 +26,31 @@ const Assessment = ({ questions }) => {
     setError(null);
 
     const token = localStorage.getItem('token');
-if (!token || token === 'undefined') {
-  navigate('/auth', { state: { responses } });
-  return;
-}
+    if (!token || token === 'undefined') {
+      navigate('/auth', { state: { responses } });
+      return;
+    }
 
     const userRaw = localStorage.getItem('user');
+    if (!userRaw || userRaw === 'undefined') {
+      navigate('/auth', { state: { responses } });
+      return;
+    }
 
-if (!userRaw || userRaw === 'undefined') {
-  navigate('/auth', { state: { responses } });
-  return;
-}
+    let user;
+    try {
+      user = JSON.parse(userRaw);
+    } catch {
+      navigate('/auth', { state: { responses } });
+      return;
+    }
 
-let user;
-try {
-  user = JSON.parse(userRaw);
-} catch {
-  navigate('/auth', { state: { responses } });
-  return;
-}
-
-
+    const isFromDashboard = location.state?.from === 'dashboard';
+    const endpoint = isFromDashboard ? ENDPOINTS.RUN_WEEKLY_ASSESSMENT : ENDPOINTS.RUN_ASSESSMENT;
+    const navigationTarget = isFromDashboard ? '/dashboard' : '/result';
 
     try {
-      const response = await fetch(ENDPOINTS.RUN_ASSESSMENT, {
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +65,7 @@ try {
 
       const result = await response.json();
 
-      navigate('/result', { state: { plan: result } });
+      navigate(navigationTarget, { state: { plan: result } });
     } catch (err) {
       setError(err.message || 'Something went wrong');
     } finally {
