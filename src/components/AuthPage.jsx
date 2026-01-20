@@ -88,10 +88,21 @@ const AuthPage = () => {
     }
   };
 
+
+  const handleGoogleLogin = () => {
+    // Save the quiz responses to localStorage to survive the redirect
+    if (quizResponses.length > 0) {
+      localStorage.setItem('quizResponses', JSON.stringify(quizResponses));
+    }
+    // Redirect to the Google auth endpoint
+    window.location.href = ENDPOINTS.GOOGLE_AUTH;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 relative overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute top-20 left-10 w-80 h-80 bg-green-300/20 rounded-full blur-3xl" />
+
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-emerald-300/20 rounded-full blur-3xl" />
       
       {/* Floating leaves */}
@@ -139,7 +150,7 @@ const AuthPage = () => {
 
             {/* Form */}
             <div className="p-8">
-              <div className="space-y-5" onSubmit={handleSubmit}>
+              <form className="space-y-5" onSubmit={handleSubmit}>
                 {!isLogin && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
@@ -202,8 +213,7 @@ const AuthPage = () => {
                 </div>
                 
                 <motion.button 
-                  type="button"
-                  onClick={handleSubmit}
+                  type="submit"
                   disabled={loading}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -225,7 +235,27 @@ const AuthPage = () => {
                     </>
                   )}
                 </motion.button>
+              </form>
+
+              {/* Or Separator */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-white px-2 text-gray-500">Or</span>
+                </div>
               </div>
+
+              {/* Google Login Button */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full py-3 mt-4 bg-red-500 hover:bg-red-600 text-white rounded-full font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <img src="https://www.svgrepo.com/show/303108/google-icon-logo.svg" alt="Google" className="w-5 h-5" />
+                <span>Login with Google</span>
+              </button>
 
               {/* Toggle Login/Signup */}
               <div className="mt-8 pt-6 border-t-2 border-green-100 text-center">

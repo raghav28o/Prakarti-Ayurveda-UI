@@ -9,6 +9,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { isAuthenticated } from '../utils/auth';
 import { ENDPOINTS } from '../apiConfig';
+import fetchWithAuth from '../utils/api';
 
 const Assessment = ({ questions }) => {
   const navigate = useNavigate();
@@ -50,11 +51,10 @@ const Assessment = ({ questions }) => {
     const navigationTarget = isFromDashboard ? '/dashboard' : '/result';
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetchWithAuth(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(responses),
       });

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ENDPOINTS } from '../apiConfig';
+import fetchWithAuth from '../utils/api';
 
 const ProcessingLoading = () => {
   const navigate = useNavigate();
@@ -65,11 +66,10 @@ const ProcessingLoading = () => {
           console.log('⏱️ Request timeout after 30s');
         }, 30000); // 30 second timeout
 
-        const response = await fetch(ENDPOINTS.RUN_ASSESSMENT, {
+        const response = await fetchWithAuth(ENDPOINTS.RUN_ASSESSMENT, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}` // Send the JWT to Spring Boot
           },
           body: JSON.stringify(answers),
           signal: controller.signal

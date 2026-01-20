@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ENDPOINTS } from '../apiConfig';
 import { isAuthenticated, logout } from '../utils/auth';
 import { Leaf, Wind, Flame, Sprout, Soup, Salad, Wheat, AlertTriangle, Settings, User, MapPin, Star, X } from 'lucide-react';
+import fetchWithAuth from '../utils/api';
 
 const doshaColors = {
   VATA: {
@@ -76,19 +77,19 @@ const ResultPage = () => {
     if (!validateForm()) return;
     setIsRegenerating(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token'); // Keep this for userDetails PUT, as fetchWithAuth doesn't handle body for PUT.
       const userId = plan.assessment.user.id;
       const assessmentId = plan.assessment.id;
 
-      await fetch(`${ENDPOINTS.BASE_URL}/api/users/${userId}`, {
+      await fetchWithAuth(`${ENDPOINTS.BASE_URL}/api/users/${userId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userDetails)
       });
 
-      const regenerateResponse = await fetch(`${ENDPOINTS.BASE_URL}/api/assessments/${assessmentId}/regenerate-diet-plan`, {
+      const regenerateResponse = await fetchWithAuth(`${ENDPOINTS.BASE_URL}/api/assessments/${assessmentId}/regenerate-diet-plan`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (!regenerateResponse.ok) throw new Error(`Failed to regenerate diet plan: ${regenerateResponse.status}`);

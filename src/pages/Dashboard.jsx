@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isAuthenticated, logout } from '../utils/auth';
-import { Leaf, User, Wind, Flame, Sprout, Soup, Salad, Wheat, AlertTriangle } from 'lucide-react';
+import { Leaf, User, Wind, Flame, Sprout, Soup, Salad, Wheat, AlertTriangle, History, CalendarDays } from 'lucide-react';
+import { ENDPOINTS } from '../apiConfig';
+import fetchWithAuth from '../utils/api';
 
 const doshaColors = {
   VATA: {
@@ -29,22 +31,53 @@ const Dashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [plan, setPlan] = useState(null);
+  const [historyPlans, setHistoryPlans] = useState([]);
+  const [selectedHistoryPlanId, setSelectedHistoryPlanId] = useState(null);
   const [activeDay, setActiveDay] = useState(new Date().toLocaleString('en-US', { weekday: 'long' }).toUpperCase());
 
   useEffect(() => {
-    const initialPlan = location.state?.plan;
-    if (initialPlan) {
-      localStorage.setItem('lastPlan', JSON.stringify(initialPlan));
-      setPlan(initialPlan);
-    } else {
-      const storedPlan = localStorage.getItem('lastPlan');
-      if (storedPlan) {
-        setPlan(JSON.parse(storedPlan));
-      } else {
-        navigate('/assessment');
+    const fetchHistory = async () => {
+      try {
+        // Token handling is now inside fetchWithAuth, no need to check here
+        // If not authenticated, fetchWithAuth will still proceed, and backend will handle auth errors.
+
+        const response = await fetchWithAuth(ENDPOINTS.ASSESSMENT_HISTORY, {});
+        if (!response.ok) {
+          throw new Error('Failed to fetch history');
+        }
+        const data = await response.json();
+        // Sort history by date, most recent first
+        const sortedData = data.sort((a, b) => new Date(b.assessment.createdAt) - new Date(a.assessment.createdAt));
+        setHistoryPlans(sortedData);
+
+        const initialPlan = location.state?.plan;
+        if (initialPlan) {
+          setPlan(initialPlan);
+          setSelectedHistoryPlanId(initialPlan.assessment.id);
+        } else if (sortedData.length > 0) {
+          setPlan(sortedData[0]); // Load the most recent plan by default
+          setSelectedHistoryPlanId(sortedData[0].assessment.id);
+        }
+
+      } catch (error) {
+        console.error("Error fetching assessment history:", error);
+        // Handle error, e.g., redirect to login or show an error message
       }
+    };
+
+    fetchHistory();
+  }, [navigate, location.state?.plan, ENDPOINTS.ASSESSMENT_HISTORY]); // Added ENDPOINTS.ASSESSMENT_HISTORY to dependencies
+
+  const handleHistoryClick = (historicalPlan) => {
+    setPlan(historicalPlan);
+    setSelectedHistoryPlanId(historicalPlan.assessment.id);
+    // If the historical plan has daily diets, set active day to its first day, otherwise reset to current weekday
+    if (historicalPlan.dietPlan?.dailyDiets && historicalPlan.dietPlan.dailyDiets.length > 0) {
+      setActiveDay(historicalPlan.dietPlan.dailyDiets[0].dayOfWeek.toUpperCase());
+    } else {
+      setActiveDay(new Date().toLocaleString('en-US', { weekday: 'long' }).toUpperCase());
     }
-  }, [location.state?.plan, navigate]);
+  };
 
   if (!plan) {
     return (
@@ -55,14 +88,47 @@ const Dashboard = () => {
   }
 
   const { assessment, dietPlan } = plan;
-  const { dailyDiets, avoidFoods, doshaType } = dietPlan;
+  const { breakfast, lunch, dinner, dailyDiets, avoidFoods, doshaType } = dietPlan;
   const currentDoshaStyle = doshaColors[doshaType] || doshaColors['VATA'];
-  const activeDayPlan = dailyDiets.find(d => d.dayOfWeek === activeDay) || dailyDiets[0];
+
+  // Determine if dailyDiets array is valid and not empty
+  const hasDailyDiets = dailyDiets && dailyDiets.length > 0;
+
+  // Set activeDayPlan based on whether dailyDiets exist
+  const currentDisplayedPlan = hasDailyDiets
+    ? dailyDiets.find(d => d.dayOfWeek === activeDay) || dailyDiets[0]
+    : { breakfast, lunch, dinner }; // Fallback to top-level meals
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50 text-gray-800">
-      {/* Header */}
-      <header className="p-4 flex justify-between items-center max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-emerald-100 text-gray-800 relative overflow-hidden">
+      {/* Decorative background leaves */}
+      <motion.div
+        initial={{ rotate: 0 }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+        className="absolute top-[10%] left-[5%] text-green-300 opacity-20 text-8xl pointer-events-none select-none"
+        key="leaf1"
+      >
+        🌿
+      </motion.div>
+      <motion.div
+        initial={{ rotate: 0 }}
+        animate={{ rotate: -360 }}
+        transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
+        className="absolute bottom-[10%] right-[5%] text-emerald-300 opacity-20 text-9xl pointer-events-none select-none"
+        key="leaf2"
+      >
+        🍃
+      </motion.div>
+      <div className="absolute top-[20%] right-[15%] text-green-200 opacity-15 text-7xl pointer-events-none select-none">
+        🌱
+      </div>
+      <div className="absolute bottom-[20%] left-[15%] text-emerald-200 opacity-15 text-6xl pointer-events-none select-none">
+        🌿
+      </div>
+      <div className="relative z-10"> {/* Wrap main content in a relative div with z-index */}
+        {/* Header */}
+        <header className="p-4 flex justify-between items-center w-full">
         <div className="flex items-center gap-2">
           <Leaf className="text-green-600" size={24} />
           <span className="font-serif text-xl font-semibold">Prakarti AyurVeda</span>
@@ -86,7 +152,7 @@ const Dashboard = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4 md:p-8">
+      <main className="w-full py-4 md:py-8 px-12 md:px-20">
         {/* Main Title */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-serif text-gray-900 leading-tight">
@@ -98,13 +164,46 @@ const Dashboard = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Left Panel: User Info & Scores */}
-          <motion.div 
+        <div className="grid md:grid-cols-6 gap-8">
+          {/* NEW Leftmost Panel: Assessment History */}
+          <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7 }}
             className="md:col-span-1 space-y-8"
+          >
+            <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-gray-200/80">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2"><History size={20} /> Past Plans</h3>
+              <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto"> {/* Adjusted max-height */}
+                {historyPlans.map((hp) => {
+                  const date = new Date(hp.assessment.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric'
+                  });
+                  return (
+                    <button
+                      key={hp.assessment.id}
+                      onClick={() => handleHistoryClick(hp)}
+                      className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors
+                        ${selectedHistoryPlanId === hp.assessment.id ? 'bg-green-100 text-green-800 font-medium' : 'hover:bg-gray-50 text-gray-700'}
+                      `}
+                    >
+                      <span><CalendarDays size={16} className="inline mr-2" />{date}</span>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${doshaColors[hp.assessment.dominantDosha]?.bg} ${doshaColors[hp.assessment.dominantDosha]?.text}`}>
+                        {hp.assessment.dominantDosha}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Left Panel: User Info & Scores */}
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="md:col-span-2 space-y-8"
           >
             {/* User Card */}
             <div className="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-gray-200/80">
@@ -155,24 +254,26 @@ const Dashboard = () => {
           </motion.div>
 
           {/* Right Panel: Weekly Plan */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.7 }}
-            className="md:col-span-2 bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-gray-200/80"
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="md:col-span-3 bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-gray-200/80"
           >
-            {/* Day Tabs */}
-            <div className="flex justify-between border-b border-gray-200 mb-6">
-              {dailyDiets.map(day => (
-                <button
-                  key={day.id}
-                  onClick={() => setActiveDay(day.dayOfWeek)}
-                  className={`text-sm font-semibold pb-3 -mb-px px-1 transition-colors ${activeDay === day.dayOfWeek ? `border-b-2 ${currentDoshaStyle.border} ${currentDoshaStyle.text}` : 'text-gray-500 hover:text-gray-800'}`}
-                >
-                  {day.dayOfWeek.substring(0, 3)}
-                </button>
-              ))}
-            </div>
+            {hasDailyDiets && (
+                <div className="flex justify-between border-b border-gray-200 mb-6">
+                {dailyDiets.map(day => (
+                    <button
+                    key={day.id}
+                    onClick={() => setActiveDay(day.dayOfWeek)}
+                    className={`text-sm font-semibold pb-3 -mb-px px-1 transition-colors ${activeDay === day.dayOfWeek ? `border-b-2 ${currentDoshaStyle.border} ${currentDoshaStyle.text}` : 'text-gray-500 hover:text-gray-800'}`}
+                    >
+                    {day.dayOfWeek.substring(0, 3)}
+                    </button>
+                ))}
+                </div>
+            )}
+
 
             {/* Meal Cards */}
             <AnimatePresence mode="wait">
@@ -184,39 +285,43 @@ const Dashboard = () => {
                 transition={{ duration: 0.3 }}
                 className="space-y-6"
               >
-                  <MealCard icon={Wheat} title="Breakfast" description={activeDayPlan.breakfast} />
-                  <MealCard icon={Salad} title="Lunch" description={activeDayPlan.lunch} />
-                  <MealCard icon={Soup} title="Dinner" description={activeDayPlan.dinner} />
+                  <MealCard icon={Wheat} title="Breakfast" description={currentDisplayedPlan.breakfast} />
+                  <MealCard icon={Salad} title="Lunch" description={currentDisplayedPlan.lunch} />
+                  <MealCard icon={Soup} title="Dinner" description={currentDisplayedPlan.dinner} />
               </motion.div>
             </AnimatePresence>
-            <div className="mt-8 text-center">
-                <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/assessment', { state: { from: 'dashboard' } })}
-                className="px-8 py-4 bg-green-600 text-white rounded-full font-bold shadow-lg hover:bg-green-700 transition-all"
-                >
-                Take Assessment to Regenerate Plan
-                </motion.button>
-            </div>
           </motion.div>
         </div>
+        
+        {/* Regenerate Button outside the grid */}
+        <div className="mt-12 text-center">
+            <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/assessment', { state: { from: 'dashboard' } })}
+            className="px-8 py-4 bg-green-600 text-white rounded-full font-bold shadow-lg hover:bg-green-700 transition-all"
+            >
+            Take Assessment to Regenerate Plan
+            </motion.button>
+        </div>
       </main>
+      </div> {/* Closing tag for relative z-10 div */}
     </div>
   );
 };
 
-const MealCard = ({ icon: Icon, title, description }) => (
-    <div className="flex gap-4 items-start">
-        <div className="bg-green-100 text-green-700 w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center">
-            <Icon size={24} />
+const MealCard = ({ icon: Icon, title, description }) => {
+    return (
+        <div className="flex gap-4 items-start">
+            <div className="bg-green-100 text-green-700 w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center">
+                <Icon size={24} />
+            </div>
+            <div>
+                <h4 className="font-bold text-lg text-gray-800 mb-1">{title}</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
+            </div>
         </div>
-        <div>
-            <h4 className="font-bold text-lg text-gray-800 mb-1">{title}</h4>
-            <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
-        </div>
-    </div>
-);
+    );
+};
 
 export default Dashboard;
-
