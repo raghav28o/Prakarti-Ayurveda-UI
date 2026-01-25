@@ -34,6 +34,44 @@ const Dashboard = () => {
   const [historyPlans, setHistoryPlans] = useState([]);
   const [selectedHistoryPlanId, setSelectedHistoryPlanId] = useState(null);
   const [activeDay, setActiveDay] = useState(new Date().toLocaleString('en-US', { weekday: 'long' }).toUpperCase());
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleRegenerate = async () => {
+    if (!plan || !plan.assessment?.id) {
+        console.error("No assessment available to regenerate.");
+        return;
+    }
+    setIsRegenerating(true);
+    try {
+        const assessmentId = plan.assessment.id;
+        const regenerateResponse = await fetchWithAuth(`${ENDPOINTS.BASE_URL}/api/assessments/${assessmentId}/regenerate-diet-plan`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!regenerateResponse.ok) {
+            throw new Error(`Failed to regenerate diet plan: ${regenerateResponse.status}`);
+        }
+        
+        const newPlan = await regenerateResponse.json();
+        
+        setPlan(newPlan);
+        
+        const response = await fetchWithAuth(ENDPOINTS.ASSESSMENT_HISTORY, {});
+        if (!response.ok) {
+          throw new Error('Failed to fetch history');
+        }
+        const data = await response.json();
+        const sortedData = data.sort((a, b) => new Date(b.assessment.createdAt) - new Date(a.assessment.createdAt));
+        setHistoryPlans(sortedData);
+        setSelectedHistoryPlanId(newPlan.assessment.id);
+
+    } catch (error) {
+        console.error('❌ Error regenerating plan:', error);
+    } finally {
+        setIsRegenerating(false);
+    }
+  };
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -294,7 +332,7 @@ const Dashboard = () => {
         </div>
         
         {/* Regenerate Button outside the grid */}
-        <div className="mt-12 text-center">
+        <div className="mt-12 text-center flex justify-center items-center gap-4">
             <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -302,6 +340,15 @@ const Dashboard = () => {
             className="px-8 py-4 bg-green-600 text-white rounded-full font-bold shadow-lg hover:bg-green-700 transition-all"
             >
             Take Assessment to Regenerate Plan
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleRegenerate}
+              disabled={isRegenerating}
+              className="px-8 py-4 bg-orange-500 text-white rounded-full font-bold shadow-lg hover:bg-orange-600 transition-all disabled:opacity-50"
+            >
+              {isRegenerating ? '🔄 Regenerating...' : 'Regenerate Plan without Assessment'}
             </motion.button>
         </div>
       </main>

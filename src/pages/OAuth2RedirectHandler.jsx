@@ -8,32 +8,45 @@ const OAuth2RedirectHandler = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchUser = async (token) => {
+        const handleAuthRedirect = async (token) => {
             try {
-                const response = await fetchWithAuth(ENDPOINTS.GET_USER_PROFILE, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                // 1. Fetch and store user profile
+                const userResponse = await fetchWithAuth(ENDPOINTS.GET_USER_PROFILE, {
+                    headers: { Authorization: `Bearer ${token}` },
                 });
 
-                if (response.ok) {
-                    const user = await response.json();
+                if (userResponse.ok) {
+                    const user = await userResponse.json();
                     localStorage.setItem('user', JSON.stringify(user));
                 } else {
-                    console.error('Failed to fetch user profile');
+                    console.error('Failed to fetch user profile, redirecting to login.');
+                    navigate('/auth'); // Redirect to a generic auth page on profile failure
+                    return;
                 }
-            } catch (error) {
-                console.error('Error fetching user profile:', error);
-            } finally {
-                // Retrieve quiz responses from localStorage
-                const storedResponses = localStorage.getItem('quizResponses');
-                const quizResponses = storedResponses ? JSON.parse(storedResponses) : [];
-                
-                // Clean up localStorage
-                localStorage.removeItem('quizResponses');
 
-                // Redirect to the processing page, passing the responses
-                navigate('/processing', { state: { responses: quizResponses } });
+                // 2. Fetch assessment history to determine if user is new
+                const historyResponse = await fetchWithAuth(ENDPOINTS.ASSESSMENT_HISTORY, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                if (historyResponse.ok) {
+                    const history = await historyResponse.json();
+                    if (history.length > 0) {
+                        // Existing user with history, go to dashboard
+                        navigate('/dashboard');
+                    } else {
+                        // New user without history, go to awareness page
+                        navigate('/DoshaAwareness');
+                    }
+                } else {
+                     // Even if history fails, we can probably send them to the awareness page as a fallback
+                    console.error('Failed to fetch assessment history, proceeding to awareness page.');
+                    navigate('/DoshaAwareness');
+                }
+
+            } catch (error) {
+                console.error('Error during auth redirect:', error);
+                navigate('/auth'); // Fallback redirection on error
             }
         };
 
@@ -42,10 +55,10 @@ const OAuth2RedirectHandler = () => {
 
         if (token) {
             localStorage.setItem('token', token);
-            fetchUser(token);
+            handleAuthRedirect(token);
         } else {
-            // Handle the case where the token is not present
-            navigate('/login');
+            console.error('No token found in URL, redirecting to auth page.');
+            navigate('/auth'); // Redirect if no token is present
         }
     }, [location, navigate]);
 

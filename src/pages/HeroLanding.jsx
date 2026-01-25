@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Leaf } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ENDPOINTS } from '../apiConfig';
 
 const HeroLanding = () => {
   const navigate = useNavigate();
@@ -40,6 +41,20 @@ const HeroLanding = () => {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden">
+
+      <header className="absolute top-0 right-0 p-4 z-40">
+        <motion.a
+          href={`${ENDPOINTS.GOOGLE_AUTH}`}
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 1.0 }}
+          className="px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-all shadow-lg text-sm flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg"><path d="M533.5 272.3c0-18.7-1.5-36.8-4.7-54.3H272.1v104.8h147c-6.1 33.8-25.7 63.7-59.2 84.4l-.1 1.7 87.7 67.9.1.8c51.9-47.2 82.2-116.2 82.2-192.8z" fill="#4285F4"/><path d="M272.1 544.3c73.4 0 135.3-24.1 180.4-65.7l-87.7-68c-24.4 16.6-55.9 26-92.6 26-71 0-131.2-47.9-152.9-112.3l-1.4.1-85.2 65.9-.9 1.6c43.9 87.7 136 149.9 240.4 149.9z" fill="#34A853"/><path d="M119.3 324.3c-11.4-33.8-11.4-70.1 0-103.9V21.4L33.9 85.1l-2.6 1.6C12.4 133.9 0 190.1 0 272.3s12.4 138.4 31.3 192.6l85.4-66c-3.1-9.2-4.7-18.7-4.7-28.1z" fill="#FBBC04"/><path d="M272.1 107.7c38.8-.6 74.3 14 101.2 40.4l76.7-76.6C405.4 24.1 339.7-.8 272.1 0 167.7 0 75.5 62.2 31.5 149.9l87.9 67.9c21.6-64 81.7-111.9 152.7-111.9z" fill="#EA4335"/></svg>
+          Login with Google
+        </motion.a>
+      </header>
+
 
       {/* ================= Background Image ================= */}
       <motion.div
@@ -150,6 +165,7 @@ const HeroLanding = () => {
             </span>
           </motion.h1>
 
+          <div className='flex justify-center items-center gap-x-4'>
           <motion.button
             onClick={handleStart}
             initial={{ y: 20, opacity: 0 }}
@@ -159,6 +175,7 @@ const HeroLanding = () => {
           >
             Start the Assessment
           </motion.button>
+          </div>
         </div>
       </motion.div>
 
